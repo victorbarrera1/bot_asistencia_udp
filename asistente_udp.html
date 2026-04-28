@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente Académico UDP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  #app {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 700px;
+    height: 650px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+    background: #fff;
+  }
+  #header {
+    background: #8B1A1A;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  #header-logo {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 600; color: #fff; flex-shrink: 0;
+  }
+  #header-text h2 { font-size: 15px; font-weight: 600; color: #fff; margin: 0; }
+  #header-text p { font-size: 12px; color: rgba(255,255,255,0.7); margin: 0; }
+  #status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; margin-left: auto; }
+
+  #messages {
+    flex: 1; overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: #f8f8f8;
+  }
+  .msg { display: flex; flex-direction: column; max-width: 80%; gap: 4px; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.bot { align-self: flex-start; align-items: flex-start; }
+  .bubble {
+    padding: 10px 14px; border-radius: 16px;
+    font-size: 14px; line-height: 1.5; color: #222;
+  }
+  .msg.user .bubble { background: #8B1A1A; color: #fff; border-bottom-right-radius: 4px; }
+  .msg.bot .bubble { background: #fff; border: 1px solid #e5e5e5; border-bottom-left-radius: 4px; }
+  .msg-label { font-size: 11px; color: #999; padding: 0 4px; }
+
+  #chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px 16px 0; background: #f8f8f8;
+  }
+  .chip {
+    font-size: 12px; padding: 5px 12px;
+    border-radius: 20px; border: 1px solid #8B1A1A;
+    color: #8B1A1A; background: transparent;
+    cursor: pointer; transition: background 0.15s;
+    font-family: inherit;
+  }
+  .chip:hover { background: rgba(139,26,26,0.08); }
+
+  #input-area {
+    display: flex; gap: 8px; padding: 12px 16px;
+    background: #fff; border-top: 1px solid #eee; flex-shrink: 0;
+  }
+  #input {
+    flex: 1; padding: 10px 14px;
+    border-radius: 8px; border: 1px solid #ddd;
+    font-size: 14px; font-family: inherit;
+    background: #fafafa; color: #222; outline: none;
+    height: 40px;
+  }
+  #input:focus { border-color: #8B1A1A; }
+  #send {
+    width: 40px; height: 40px; border-radius: 8px;
+    background: #8B1A1A; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: opacity 0.15s;
+  }
+  #send:hover { opacity: 0.85; }
+  #send:disabled { opacity: 0.4; cursor: not-allowed; }
+  #send svg { width: 16px; height: 16px; fill: #fff; }
+
+  .typing { display: flex; gap: 4px; align-items: center; padding: 10px 14px; }
+  .typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: #aaa;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%,60%,100% { transform: translateY(0); }
+    30% { transform: translateY(-5px); }
+  }
+  #disclaimer {
+    font-size: 10px; color: #aaa; text-align: center;
+    padding: 4px 16px 8px; background: #fff;
+  }
+  #api-banner {
+    background: #fff3cd; border-top: 1px solid #ffc107;
+    padding: 8px 16px; font-size: 12px; color: #856404;
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  #api-key-input {
+    flex: 1; padding: 4px 8px; border-radius: 6px;
+    border: 1px solid #ffc107; font-size: 12px; font-family: monospace;
+    background: #fffdf0;
+  }
+  #api-save {
+    padding: 4px 10px; border-radius: 6px; border: none;
+    background: #8B1A1A; color: #fff; font-size: 12px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="header">
+    <div id="header-logo">U</div>
+    <div id="header-text">
+      <h2>Asistente UDP</h2>
+      <p>Bot académico — solo información oficial</p>
+    </div>
+    <div id="status-dot"></div>
+  </div>
+
+  <div id="api-banner">
+    <span>🔑 API Key Anthropic:</span>
+    <input id="api-key-input" type="password" placeholder="sk-ant-..." />
+    <button id="api-save" onclick="saveKey()">Guardar</button>
+  </div>
+
+  <div id="messages">
+    <div class="msg bot">
+      <span class="msg-label">Asistente UDP</span>
+      <div class="bubble">Hola 👋 Soy el asistente académico de la UDP. Puedo ayudarte con inscripción de ramos, becas, trámites, calendario académico, y más. Si no tengo la respuesta, te digo exactamente a qué unidad contactar. ¿En qué te ayudo?</div>
+    </div>
+  </div>
+
+  <div id="chips">
+    <button class="chip" onclick="sendChip(this)">Inscripción de ramos</button>
+    <button class="chip" onclick="sendChip(this)">Becas y beneficios</button>
+    <button class="chip" onclick="sendChip(this)">Calendario académico</button>
+    <button class="chip" onclick="sendChip(this)">Proceso de titulación</button>
+    <button class="chip" onclick="sendChip(this)">Contacto biblioteca</button>
+  </div>
+
+  <div id="input-area">
+    <input id="input" type="text" placeholder="Escribe tu pregunta..." />
+    <button id="send" onclick="send()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+  <div id="disclaimer">Solo responde con información oficial verificada de la UDP</div>
+</div>
+
+<script>
+const KNOWLEDGE_BASE = `
+# BASE DE CONOCIMIENTO OFICIAL UDP
+
+## REGISTRO CURRICULAR
+- Función: Gestión académica — inscripción, retiro, anulación de ramos, convalidaciones, historial académico, certificados.
+- Inscripción de ramos: Portal intranet.udp.cl en períodos del calendario académico.
+- Retiro de ramo: Hasta fecha del calendario sin registro. Después aparece como "Retirado".
+- Anulación de semestre: Solicitar formalmente en Registro Curricular con justificación.
+- Convalidaciones: Presentar programas de ramos cursados en otra institución en Registro Curricular.
+- Contacto: registro.curricular@udp.cl
+
+## DAE (Dirección de Asuntos Estudiantiles)
+- Función: Becas internas, beneficios, orientación, apoyo psicológico, actividades extracurriculares.
+- Becas internas UDP: Beca de Excelencia Académica, Beca Socioeconómica UDP. Postulación anual marzo-abril.
+- FUAS: Se completa en beneficiosestudiantiles.cl. Requisito para becas del Estado (Beca Bicentenario, Juan Gómez Millas, etc.).
+- CAE: Administrado por Ingresa. Consultas de pago al banco o a DAE.
+- Psicología y orientación: Disponible sin costo para estudiantes.
+- Deportes y cultura: Equipos deportivos, talleres culturales, actividades estudiantiles.
+- Contacto: dae@udp.cl
+
+## TESORERÍA / FINANZAS
+- Pago de arancel: En línea por intranet.udp.cl o en cajas presenciales.
+- Convenio de pago: Solicitar en Tesorería si hay deuda o dificultades para pagar.
+- Bloqueo académico: Las deudas bloquean inscripción de ramos. Regularizar en Tesorería.
+- Contacto: tesoreria@udp.cl
+
+## BIBLIOTECA UDP
+- Acceso: Automático con carnet universitario para alumnos activos.
+- Préstamo: Hasta 5 libros por 7 días, renovables en línea.
+- Bases de datos digitales: JSTOR, Scopus, ProQuest, ScienceDirect — acceso desde red UDP o VPN.
+- VPN: Se descarga desde el portal DTAI para acceso remoto a bases de datos.
+- Sala de estudio: Reserva previa por sistema de biblioteca.
+- Contacto: biblioteca@udp.cl | Horario: lunes a viernes 8:30–20:30, sábados 9:00–14:00.
+
+## DTAI (Dirección de Tecnologías)
+- Función: Soporte técnico, cuentas institucionales, acceso a redes, laboratorios.
+- Correo institucional: @mail.udp.cl, acceso por Gmail.
+- WiFi UDP: Red "UDP" con credenciales institucionales.
+- VPN: Para recursos de biblioteca desde fuera del campus.
+- Microsoft 365: Gratuito para estudiantes con correo institucional.
+- Contacto: dtai@udp.cl
+
+## TITULACIÓN
+- Requisitos: 100% de ramos aprobados, créditos mínimos, práctica profesional si aplica.
+- Tramitación: Iniciar en Secretaría de Estudios de la Escuela correspondiente.
+- Certificado de egreso: Se solicita en Registro Curricular.
+
+## CALENDARIO ACADÉMICO 2026 (aproximado)
+- Primer semestre: Inicio clases marzo 2026. Inscripción ramos febrero 2026. Exámenes julio 2026.
+- Segundo semestre: Inicio agosto 2026. Exámenes diciembre 2026.
+- Nota: Fechas exactas en udp.cl — siempre verificar allí.
+
+## REGLAMENTO ACADÉMICO
+- Asistencia: Mínimo 75% para rendir examen final (verificar por escuela).
+- Escala de notas: 1.0 a 7.0. Aprobación: 4.0.
+- Máximo de ramos: Generalmente 6–7 por semestre salvo autorización especial.
+
+## PRÁCTICA PROFESIONAL
+- Coordinación: Dirección de Prácticas o Secretaría de la Escuela.
+- Formalización: Documentos antes, durante y después. Retirar formularios en la Escuela.
+
+## SALUD ESTUDIANTIL
+- SEMDA: Servicio Médico y Dental del Alumno para estudiantes UDP.
+- Psicología: Disponible via DAE o clínica UDP.
+
+## SISTEMAS DIGITALES
+- Intranet: intranet.udp.cl — inscripción de ramos, notas, horarios, pago de aranceles.
+- Correo: usuario@mail.udp.cl
+- LMS: udp.instructure.com (Canvas) — clases online, materiales, tareas.
+
+## INTERCAMBIO ESTUDIANTIL
+- Gestión: Oficina de Relaciones Internacionales UDP.
+- Requisitos: Buen rendimiento académico, nivel de idioma según destino.
+- Contacto: internacional@udp.cl
+
+## CONTACTOS GENERALES
+- Web: www.udp.cl
+- Intranet: intranet.udp.cl
+- Registro Curricular: registro.curricular@udp.cl
+- DAE: dae@udp.cl
+- Tesorería: tesoreria@udp.cl
+- Biblioteca: biblioteca@udp.cl
+- DTAI: dtai@udp.cl
+- Relaciones Internacionales: internacional@udp.cl
+`;
+
+const SYSTEM_PROMPT = `Eres el asistente académico oficial de la Universidad Diego Portales (UDP). Responde SOLO con información de la base de conocimiento provista.
+
+REGLAS:
+1. Solo usa información de la base de conocimiento. No inventes nada.
+2. Si no puedes responder, di: "No tengo información verificada sobre eso. Te recomiendo contactar a [unidad más relevante] en [contacto si está disponible]."
+3. Respuestas concisas, máximo 4-6 oraciones.
+4. Siempre en español.
+5. Incluye contacto relevante al final de tu respuesta cuando exista.
+6. Nunca inventes fechas, montos ni procedimientos que no estén en la base de conocimiento.
+
+BASE DE CONOCIMIENTO OFICIAL UDP:
+${KNOWLEDGE_BASE}`;
+
+let history = [];
+let loading = false;
+let apiKey = localStorage.getItem('udp_api_key') || '';
+
+function saveKey() {
+  apiKey = document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('udp_api_key', apiKey);
+  document.getElementById('api-banner').style.display = 'none';
+  addMessage('bot', '✅ API Key guardada. ¡Ya puedo responder tus preguntas!');
+}
+
+if (apiKey) {
+  document.getElementById('api-key-input').value = apiKey;
+  document.getElementById('api-banner').style.display = 'none';
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function addMessage(role, text) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+  const label = document.createElement('span');
+  label.className = 'msg-label';
+  label.textContent = role === 'user' ? 'Tú' : 'Asistente UDP';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = escapeHtml(text);
+  div.appendChild(label);
+  div.appendChild(bubble);
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTyping() {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.id = 'typing-indicator';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble typing';
+  bubble.innerHTML = '<span></span><span></span><span></span>';
+  div.appendChild(bubble);
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+async function sendMessage(text) {
+  if (!text.trim() || loading) return;
+  if (!apiKey) {
+    alert('Primero ingresa tu API Key de Anthropic.');
+    document.getElementById('api-banner').style.display = 'flex';
+    return;
+  }
+  loading = true;
+  document.getElementById('send').disabled = true;
+  document.getElementById('chips').style.display = 'none';
+  addMessage('user', text);
+  history.push({ role: 'user', content: text });
+  addTyping();
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: history
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    const reply = data.content?.[0]?.text || 'Error al obtener respuesta.';
+    removeTyping();
+    addMessage('bot', reply);
+    history.push({ role: 'assistant', content: reply });
+  } catch (e) {
+    removeTyping();
+    addMessage('bot', 'Error: ' + e.message);
+  }
+
+  loading = false;
+  document.getElementById('send').disabled = false;
+}
+
+function send() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  input.value = '';
+  sendMessage(text);
+}
+
+function sendChip(btn) { sendMessage(btn.textContent); }
+
+document.getElementById('input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') send();
+});
+</script>
+</body>
+</html>
