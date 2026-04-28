@@ -21,8 +21,8 @@ Chatbot de inteligencia artificial para estudiantes de la Universidad Diego Port
 
 ## 📌 Contexto
 
-Proyecto desarrollado para **Fondos Concursables Impacta UDP 2026**.  
-Escuela de Informática & Telecomunicaciones — Universidad Diego Portales.
+Proyecto desarrollado por **Victor Barrera, Abril del 2026**.  
+Estudiande de la Escuela de Informática & Telecomunicaciones — Universidad Diego Portales.
 
 ---
 
