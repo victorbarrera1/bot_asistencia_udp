@@ -24,8 +24,3 @@ Chatbot de inteligencia artificial para estudiantes de la Universidad Diego Port
 Proyecto desarrollado por **Victor Barrera, Abril del 2026**.  
 Estudiante de la Escuela de Informática & Telecomunicaciones — Universidad Diego Portales.
 
----
-
-## 📄 Licencia
-
-MIT
